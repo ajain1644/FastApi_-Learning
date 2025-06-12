@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from typing import Annotated
 from pydantic import BaseModel
 from starlette import status
-from ..database import db_dependency
-from .. import models
-from .user import bcrypt_context
+from database import db_dependency
+import models
+from .security import bcrypt_context
 from jose import jwt, JWTError
 from datetime import timedelta,datetime,timezone
 
@@ -30,8 +30,8 @@ def authenticateUser(db,username: str,password: str):
         return False
     return user
 
-def create_access_token(username: str,user_id: int,expire_delta: timedelta):
-    encode = {'sub':username,'id':user_id}
+def create_access_token(username: str,user_id: int,role: str,expire_delta: timedelta):
+    encode = {'sub':username,'id':user_id,'role':role}
     expires = datetime.now(timezone.utc) + expire_delta
     encode.update({'exp':expires})
     return jwt.encode(encode,SECRET_KEY,ALGORITHM)
@@ -41,9 +41,10 @@ def get_current_user(token: Annotated[OAuth2PasswordBearer,Depends(oauth2_bearer
         payload = jwt.decode(token,SECRET_KEY,ALGORITHM)
         username = payload.get('sub')
         user_id = payload.get('id')
+        user_role = payload.get('role')
         if username is None or user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="could not validate user!")
-        return {'username':username,'id':user_id}
+        return {'username':username,'id':user_id,'role':user_role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="could not validate user!")
 
@@ -56,6 +57,6 @@ async def login_for_access_token(
     user = authenticateUser(db,username=form_data.username,password=form_data.password)
     if not user:
         raise HTTPException(401,"Username or Password is incorrect!")
-    token = create_access_token(user.username,user.id,timedelta(minutes=20))
+    token = create_access_token(user.username,user.id,user.role,timedelta(minutes=20))
 
     return {'access_token': token,'token_type':'bearer'}

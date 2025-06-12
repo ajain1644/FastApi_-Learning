@@ -1,5 +1,5 @@
-from TODO import models
-from TODO.database import SessionLocal, engine, db_dependency
+import models
+from database import SessionLocal, engine, db_dependency
 from fastapi import APIRouter, HTTPException, Depends, Path
 from starlette import status
 from pydantic import BaseModel, Field
@@ -10,7 +10,6 @@ from .auth import get_current_user
 router = APIRouter(
     tags=['Todos']
 )
-models.Base.metadata.create_all(bind=engine)
 
 class TodoSchema(BaseModel):
     id: Optional[int] = Field(description="no need of id", default=None)
